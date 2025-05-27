@@ -21,10 +21,10 @@ passport.use(new JwtStrategy({
         return done(error, false);
     }
 }));
-function generateUniqueUsername(email) {
-    const emailUsername = email.split('@')[0];
-    const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, '');
-    return `${emailUsername}_${timestamp}`;
+function generateUniqueUsername(baseInput) {
+    const cleanInput = baseInput.split('@')[0].replace(/[^a-z0-9]/gi, '').toLowerCase();
+    const timestamp = Date.now().toString().slice(-6);
+    return `${cleanInput}_${timestamp}`;
 }
 // Google OAuth Strategy
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
@@ -128,6 +128,8 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
         callbackURL: "/auth/github/callback"
     }, async (accessToken, refreshToken, profile, done) => {
         try {
+            console.log('🐙 GitHub OAuth profile received:', profile.username);
+            
             let existingUser = await User.findOne({ 
                 providerId: profile.id, 
                 provider: 'github' 
@@ -136,6 +138,7 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
             if (existingUser) {
                 existingUser.lastLogin = new Date();
                 await existingUser.save();
+                console.log('✅ Existing GitHub user logged in:', existingUser.username);
                 return done(null, existingUser);
             }
 
@@ -149,11 +152,14 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
                 existingUser.lastLogin = new Date();
                 existingUser.isVerified = true;
                 await existingUser.save();
+                console.log('✅ Linked GitHub account to existing user:', existingUser.email);
                 return done(null, existingUser);
             }
 
             const baseUsername = profile.username || profile.displayName || email.split('@')[0] || 'githubuser';
-            const uniqueUsername = await generateUniqueUsername(baseUsername);
+            const uniqueUsername = generateUniqueUsername(baseUsername);
+
+            console.log('🔄 Creating new GitHub user with username:', uniqueUsername);
 
             if (!uniqueUsername) {
                 throw new Error('Failed to generate username');
@@ -170,14 +176,15 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
             });
 
             await newUser.save();
+            console.log('✅ New GitHub user created:', newUser.username);
             return done(null, newUser);
         } catch (error) {
-            console.error('GitHub OAuth error:', error);
+            console.error('🔥 GitHub OAuth error:', error);
             return done(error, null);
         }
     }));
 } else {
-    console.warn('GitHub OAuth not configured - missing GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET');
+    console.warn('⚠️ GitHub OAuth not configured - missing GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET');
 }
 
 // Serialize/Deserialize user for session
