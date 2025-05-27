@@ -1,0 +1,78 @@
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .ide-container {
+    grid-template-columns: 1fr;
+  }
+
+  .ide-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 300px;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    z-index: 50;
+  }
+
+  .ide-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .ide-main {
+    margin-left: 0;
+  }
+
+  .ide-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-button {
+    min-width: auto;
+    padding: 0 12px;
+  }
+
+  .tab-button span {
+    display: none;
+  }
+
+  .tab-button svg {
+    margin: 0;
+  }
+
+  .ide-statusbar {
+    font-size: 10px;
+  }
+
+  .status-item span {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .ide-menubar {
+    padding: 4px;
+  }
+
+  .ide-logo span {
+    display: none;
+  }
+
+  .menubar-center {
+    display: none;
+  }
+
+  .menu-action span {
+    display: none;
+  }
+
+  .ide-tabs {
+    height: auto;
+  }
+
+  .tab-actions {
+    display: none;
+  }
+}

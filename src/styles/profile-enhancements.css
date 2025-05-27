@@ -1,0 +1,230 @@
+/* Custom animations */
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(99, 102, 241, 0.6);
+    }
+}
+
+@keyframes gradient-shift {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* Floating animation for decorative elements */
+.animate-float {
+    animation: float 3s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+    animation: float 3s ease-in-out infinite;
+    animation-delay: 1.5s;
+}
+
+/* Pulse glow effect */
+.pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Gradient animation */
+.gradient-animate {
+    background-size: 200% 200%;
+    animation: gradient-shift 3s ease infinite;
+}
+
+/* Glass morphism effect */
+.glass-morphism {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Enhanced hover effects */
+.enhanced-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.enhanced-hover:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(45deg, #6366f1, #8b5cf6);
+    border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(45deg, #4f46e5, #7c3aed);
+}
+
+/* Code syntax highlighting styles */
+.code-block {
+    background: #1e1e1e;
+    border-radius: 12px;
+    padding: 20px;
+    color: #d4d4d4;
+    font-family: 'Fira Code', 'Monaco', 'Menlo', monospace;
+    position: relative;
+    overflow: hidden;
+}
+
+.code-block::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    background: linear-gradient(90deg, #ff5f56, #ffbd2e, #27ca3f);
+    border-radius: 12px 12px 0 0;
+}
+
+.code-line {
+    margin: 8px 0;
+    padding-left: 20px;
+    position: relative;
+}
+
+.code-line::before {
+    content: attr(data-line);
+    position: absolute;
+    left: 0;
+    color: #666;
+    font-size: 12px;
+    width: 15px;
+}
+
+/* Programming language colors */
+.lang-javascript { color: #f7df1e; }
+.lang-python { color: #3776ab; }
+.lang-cpp { color: #00599c; }
+.lang-java { color: #ed8b00; }
+.lang-go { color: #00add8; }
+.lang-rust { color: #ce422b; }
+
+/* Difficulty colors */
+.difficulty-easy { 
+    background: linear-gradient(135deg, #10b981, #34d399);
+    color: white;
+}
+
+.difficulty-medium { 
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    color: white;
+}
+
+.difficulty-hard { 
+    background: linear-gradient(135deg, #ef4444, #f87171);
+    color: white;
+}
+
+/* Platform specific styling */
+.platform-codeforces {
+    background: linear-gradient(135deg, #1976d2, #42a5f5);
+}
+
+.platform-leetcode {
+    background: linear-gradient(135deg, #ff6f00, #ff8f00);
+}
+
+.platform-hackerrank {
+    background: linear-gradient(135deg, #2ec866, #39d87a);
+}
+
+/* Achievement badges */
+.achievement-badge {
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    border: 2px solid #f59e0b;
+    border-radius: 50px;
+    padding: 8px 16px;
+    color: #92400e;
+    font-weight: bold;
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.achievement-badge::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shine 2s infinite;
+}
+
+@keyframes shine {
+    0% {
+        transform: rotate(45deg) translate(-100%, -100%);
+    }
+    100% {
+        transform: rotate(45deg) translate(100%, 100%);
+    }
+}
+
+/* Loading animations */
+.loading-skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .glass-morphism {
+        backdrop-filter: blur(5px);
+    }
+    
+    .enhanced-hover:hover {
+        transform: none;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .glass-morphism {
+        background: rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+}
