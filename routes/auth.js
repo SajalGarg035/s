@@ -248,23 +248,23 @@ router.get('/google/callback', (req, res, next) => {
     passport.authenticate('google', (err, user, info) => {
         if (err) {
             console.error('🔥 Google OAuth error:', err);
-            return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/login?error=oauth_error`);
+            return res.redirect(`${process.env.CLIENT_URL || 'http://72.145.9.233:3000'}/login?error=oauth_error`);
         }
         
         if (!user) {
             console.error('🔥 Google OAuth failed - no user');
-            return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
+            return res.redirect(`${process.env.CLIENT_URL || 'http://72.145.9.233:3000'}/login?error=oauth_failed`);
         }
 
         try {
             const token = generateToken(user._id);
-            const frontendURL = process.env.CLIENT_URL || 'http://localhost:3000';
+            const frontendURL = process.env.CLIENT_URL || 'http://72.145.9.233:3000';
             
             console.log('✅ Google OAuth successful for user:', user.email);
             res.redirect(`${frontendURL}/auth/success?token=${token}`);
         } catch (error) {
             console.error('🔥 Token generation error:', error);
-            res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/login?error=token_error`);
+            res.redirect(`${process.env.CLIENT_URL || 'http://72.145.9.233:3000'}/login?error=token_error`);
         }
     })(req, res, next);
 });
@@ -288,23 +288,23 @@ router.get('/github/callback', (req, res, next) => {
     passport.authenticate('github', (err, user, info) => {
         if (err) {
             console.error('🔥 GitHub OAuth error:', err);
-            return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/login?error=oauth_error`);
+            return res.redirect(`${process.env.CLIENT_URL || 'http://72.145.9.233:3000'}/login?error=oauth_error`);
         }
         
         if (!user) {
             console.error('🔥 GitHub OAuth failed - no user');
-            return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
+            return res.redirect(`${process.env.CLIENT_URL || 'http://72.145.9.233:3000'}/login?error=oauth_failed`);
         }
 
         try {
             const token = generateToken(user._id);
-            const frontendURL = process.env.CLIENT_URL || 'http://localhost:3000';
+            const frontendURL = process.env.CLIENT_URL || 'http://72.145.9.233:3000';
             
             console.log('✅ GitHub OAuth successful for user:', user.username);
             res.redirect(`${frontendURL}/auth/success?token=${token}`);
         } catch (error) {
             console.error('🔥 Token generation error:', error);
-            res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/login?error=token_error`);
+            res.redirect(`${process.env.CLIENT_URL || 'http://72.145.9.233:3000'}/login?error=token_error`);
         }
     })(req, res, next);
 });

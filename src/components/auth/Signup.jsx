@@ -108,7 +108,7 @@ const Signup = () => {
     };
 
     const handleOAuthLogin = (provider) => {
-        const backendURL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+        const backendURL = process.env.REACT_APP_BACKEND_URL || 'http://72.145.9.233:5000';
         window.location.href = `${backendURL}/auth/${provider}`;
     };
 

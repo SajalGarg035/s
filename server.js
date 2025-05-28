@@ -26,7 +26,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
 
-        origin: process.env.CLIENT_URL || "http://localhost:3000",
+        origin: process.env.CLIENT_URL || "http://72.145.9.233:3000",
 
 
         methods: ["GET", "POST"],
@@ -47,7 +47,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cors({
 
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    origin: process.env.CLIENT_URL || 'http://72.145.9.233:3000',
 
     credentials: true,            // <-- Allow the browser to send cookies
     methods: ['GET','POST','PUT','DELETE','OPTIONS'],
@@ -515,7 +515,7 @@ server.listen(PORT, () => {
     console.log(`🚀 Server listening on port ${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 
-    console.log(`🔗 Client URL: ${process.env.CLIENT_URL || 'http://localhost:3000'}`);
+    console.log(`🔗 Client URL: ${process.env.CLIENT_URL || 'http://72.145.9.233:3000'}`);
 
 
 });
