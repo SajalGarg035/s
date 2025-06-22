@@ -15,7 +15,7 @@
 ## Live Demo
 
 Access the running application at:  
-http://72.145.9.233:3000/
+http://localhost:3000/
 
 ![App Screenshot](./screenshots/demo.png)
 

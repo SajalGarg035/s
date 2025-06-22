@@ -20,7 +20,7 @@ COPY . .
 RUN npm run build
 
 # Set environment variables with actual values
-ENV REACT_APP_BACKEND_URL=http://72.145.9.233:5000
+ENV REACT_APP_BACKEND_URL=http://localhost:5000
 ENV SERVER_PORT=5000
 ENV NODE_ENV=production
 

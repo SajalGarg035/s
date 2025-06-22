@@ -8,5 +8,5 @@ export const initSocket = async () => {
         transports: ['websocket'],
     };
     
-    return io('http://72.145.9.233:5000', options);
+    return io('http://localhost:5000', options);
 };

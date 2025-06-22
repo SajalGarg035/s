@@ -14,6 +14,8 @@ const http = require('http');
 const { Server } = require('socket.io');
 
 const ACTIONS = require('./src/actions/Actions');
+// Add Docker service import
+const dockerService = require('./src/services/dockerService');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -26,7 +28,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
 
-        origin: process.env.CLIENT_URL || "http://72.145.9.233:3000",
+        origin: process.env.CLIENT_URL || "http://localhost:3000",
 
 
         methods: ["GET", "POST"],
@@ -47,7 +49,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cors({
 
-    origin: process.env.CLIENT_URL || 'http://72.145.9.233:3000',
+    origin: process.env.CLIENT_URL || 'http://localhost:3000',
 
     credentials: true,            // <-- Allow the browser to send cookies
     methods: ['GET','POST','PUT','DELETE','OPTIONS'],
@@ -227,9 +229,22 @@ ${code}
 io.on('connection', (socket) => {
     console.log('🔌 Socket connected:', socket.id);
 
-    socket.on(ACTIONS.JOIN, ({ roomId, username }) => {
+    socket.on(ACTIONS.JOIN, async ({ roomId, username }) => {
         userSocketMap[socket.id] = username;
         socket.join(roomId);
+        
+        // Initialize Docker container for the room
+        try {
+            const containerInfo = await dockerService.getContainer(roomId);
+            socket.emit('docker:container-ready', { 
+                containerId: containerInfo.id,
+                status: 'ready'
+            });
+        } catch (error) {
+            console.error('Error initializing container:', error);
+            socket.emit('docker:container-error', { error: error.message });
+        }
+        
         const clients = getAllConnectedClients(roomId);
         clients.forEach(({ socketId }) => {
             io.to(socketId).emit(ACTIONS.JOINED, {
@@ -239,6 +254,129 @@ io.on('connection', (socket) => {
             });
         });
         console.log(`👤 ${username} joined room ${roomId}`);
+    });
+
+    // Docker Terminal Operations
+    socket.on('docker:connect-terminal', async ({ roomId, containerId }) => {
+        try {
+            const terminalId = `${socket.id}-${Date.now()}`;
+            const { exec, stream } = await dockerService.createTerminal(roomId, terminalId);
+            
+            // Pipe terminal output to socket
+            stream.on('data', (chunk) => {
+                socket.emit('docker:terminal-data', chunk.toString());
+            });
+
+            stream.on('end', () => {
+                socket.emit('docker:terminal-disconnected');
+            });
+
+            stream.on('error', (error) => {
+                socket.emit('docker:terminal-error', error.message);
+            });
+
+            // Store stream reference for input
+            socket.terminalStream = stream;
+            socket.terminalId = terminalId;
+            
+            socket.emit('docker:terminal-connected', { terminalId });
+            
+        } catch (error) {
+            console.error('Terminal connection error:', error);
+            socket.emit('docker:terminal-error', error.message);
+        }
+    });
+
+    socket.on('docker:terminal-input', ({ roomId, containerId, data }) => {
+        if (socket.terminalStream) {
+            socket.terminalStream.write(data);
+        }
+    });
+
+    // File System Operations
+    socket.on('docker:get-file-tree', async ({ roomId, containerId, path }) => {
+        try {
+            const files = await dockerService.getFileTree(roomId, path);
+            socket.emit('docker:file-tree', { files });
+        } catch (error) {
+            console.error('Error getting file tree:', error);
+            socket.emit('docker:file-error', error.message);
+        }
+    });
+
+    socket.on('docker:create-file', async ({ roomId, containerId, path, type }) => {
+        try {
+            await dockerService.createFile(roomId, path, type);
+            socket.emit('docker:file-created', { path, type });
+            
+            // Broadcast to all clients in room
+            socket.to(roomId).emit('docker:file-created', { path, type });
+        } catch (error) {
+            console.error('Error creating file:', error);
+            socket.emit('docker:file-error', error.message);
+        }
+    });
+
+    socket.on('docker:delete-file', async ({ roomId, containerId, path }) => {
+        try {
+            await dockerService.deleteFile(roomId, path);
+            socket.emit('docker:file-deleted', { path });
+            
+            // Broadcast to all clients in room
+            socket.to(roomId).emit('docker:file-deleted', { path });
+        } catch (error) {
+            console.error('Error deleting file:', error);
+            socket.emit('docker:file-error', error.message);
+        }
+    });
+
+    socket.on('docker:read-file', async ({ roomId, containerId, path }) => {
+        try {
+            const content = await dockerService.readFile(roomId, path);
+            socket.emit('docker:file-content', { path, content });
+        } catch (error) {
+            console.error('Error reading file:', error);
+            socket.emit('docker:file-error', error.message);
+        }
+    });
+
+    socket.on('docker:write-file', async ({ roomId, containerId, path, content }) => {
+        try {
+            await dockerService.writeFile(roomId, path, content);
+            socket.emit('docker:file-saved', { path });
+            
+            // Broadcast file change to other clients
+            socket.to(roomId).emit('docker:file-changed', { path, content });
+        } catch (error) {
+            console.error('Error writing file:', error);
+            socket.emit('docker:file-error', error.message);
+        }
+    });
+
+    socket.on('docker:upload-file', async ({ roomId, containerId, fileName, content, path }) => {
+        try {
+            const filePath = `${path}/${fileName}`.replace('//', '/');
+            await dockerService.writeFile(roomId, filePath, content);
+            socket.emit('docker:file-uploaded', { path: filePath });
+            
+            // Refresh file tree for all clients
+            const files = await dockerService.getFileTree(roomId, '/workspace');
+            io.to(roomId).emit('docker:file-tree', { files });
+        } catch (error) {
+            console.error('Error uploading file:', error);
+            socket.emit('docker:file-error', error.message);
+        }
+    });
+
+    socket.on('docker:download-file', async ({ roomId, containerId, path }) => {
+        try {
+            const content = await dockerService.readFile(roomId, path);
+            const fileName = path.split('/').pop();
+            socket.emit('docker:file-download', { fileName, content });
+        } catch (error) {
+            console.error('Error downloading file:', error);
+            socket.emit('docker:file-error', error.message);
+        }
     });
 
     socket.on(ACTIONS.CODE_CHANGE, ({ roomId, code }) => {
@@ -271,14 +409,25 @@ io.on('connection', (socket) => {
         });
     });
 
-    socket.on('disconnecting', () => {
+    socket.on('disconnecting', async () => {
         const rooms = [...socket.rooms];
+        
+        // Cleanup terminal connections
+        if (socket.terminalStream) {
+            try {
+                socket.terminalStream.end();
+            } catch (e) {
+                console.log('Terminal cleanup error:', e.message);
+            }
+        }
+        
         rooms.forEach((roomId) => {
             socket.in(roomId).emit(ACTIONS.DISCONNECTED, {
                 socketId: socket.id,
                 username: userSocketMap[socket.id],
             });
         });
+        
         console.log(`👋 ${userSocketMap[socket.id]} disconnected`);
         delete userSocketMap[socket.id];
     });
@@ -286,6 +435,23 @@ io.on('connection', (socket) => {
     socket.on('error', (error) => {
         console.error('🔥 Socket error:', error);
     });
+});
+
+// Cleanup idle containers every 10 minutes
+setInterval(() => {
+    dockerService.cleanupIdleContainers();
+}, 10 * 60 * 1000);
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+    console.log('🛑 Shutting down server...');
+    
+    // Cleanup all containers
+    for (const [roomId] of dockerService.containers) {
+        await dockerService.cleanup(roomId);
+    }
+    
+    process.exit(0);
 });
 
 // Error handling middleware
@@ -515,7 +681,7 @@ server.listen(PORT, () => {
     console.log(`🚀 Server listening on port ${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 
-    console.log(`🔗 Client URL: ${process.env.CLIENT_URL || 'http://72.145.9.233:3000'}`);
+    console.log(`🔗 Client URL: ${process.env.CLIENT_URL || 'http://localhost:3000'}`);
 
 
 });

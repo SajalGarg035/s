@@ -51,7 +51,7 @@ const Navbar = () => {
     <div className="md:hidden">
       {/* Top minimal header for mobile */}
       <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-        <div className="px-4 py-3">
+        <div className="px-10 py-3">
           <div className="flex justify-between items-center">
             <Link to="/" className="flex items-center space-x-2">
               <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-1.5 rounded-lg">

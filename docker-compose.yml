@@ -7,7 +7,7 @@ services:
       - "5000:5000"   # Backend
     environment:
 
-      - REACT_APP_BACKEND_URL=http://72.145.9.233:5000
+      - REACT_APP_BACKEND_URL=http://localhost:5000
 
       - SERVER_PORT=5000
       - NODE_ENV=production
