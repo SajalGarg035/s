@@ -15,7 +15,8 @@ const { Server } = require('socket.io');
 
 const ACTIONS = require('./src/actions/Actions');
 // Add Docker service import
-const dockerService = require('./src/services/dockerService');
+const DockerService = require('./src/services/dockerService');
+const dockerService = new DockerService();
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -272,15 +273,16 @@ io.on('connection', (socket) => {
             const terminalId = `${socket.id}-${Date.now()}`;
             const { exec, stream } = await dockerService.createTerminal(roomId, terminalId);
             
+            console.log(`🔌 Terminal connected for ${socket.id}, stream writable: ${stream.writable}`);
+            
             // Handle terminal output
             stream.on('data', (chunk) => {
                 const data = chunk.toString();
-                console.log('📤 Terminal output:', data.replace(/\n/g, '\\n'));
                 socket.emit('docker:terminal-data', data);
             });
 
             stream.on('end', () => {
-                console.log('🔚 Terminal stream ended');
+                console.log('🔚 Terminal stream ended for', socket.id);
                 socket.emit('docker:terminal-disconnected');
             });
 
@@ -289,17 +291,18 @@ io.on('connection', (socket) => {
                 socket.emit('docker:terminal-error', error.message);
             });
 
+            stream.on('close', () => {
+                console.log('🔒 Terminal stream closed for', socket.id);
+                socket.emit('docker:terminal-disconnected');
+            });
+
             // Store stream reference for input
             socket.terminalStream = stream;
+            socket.terminalExec = exec;
             socket.terminalId = terminalId;
+            socket.roomId = roomId;
             
             socket.emit('docker:terminal-connected', { terminalId });
-            
-            // Send welcome message
-            setTimeout(() => {
-                socket.emit('docker:terminal-data', '\r\nWelcome to CodeSync Terminal!\r\n');
-                socket.emit('docker:terminal-data', 'Type commands and press Enter\r\n\r\n');
-            }, 500);
             
         } catch (error) {
             console.error('Terminal connection error:', error);
@@ -307,110 +310,229 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('docker:terminal-input', ({ roomId, containerId, data }) => {
-        console.log('📥 Terminal input received:', data.replace(/\r/g, '\\r').replace(/\n/g, '\\n'));
+    socket.on('docker:terminal-input', ({ data }) => {
+        console.log(`⌨️ Terminal input from ${socket.id}: "${data}" (length: ${data.length})`);
         
-        if (socket.terminalStream && socket.terminalStream.writable) {
-            socket.terminalStream.write(data);
-        } else {
-            console.warn('⚠️ Terminal stream not writable');
-            socket.emit('docker:terminal-error', 'Terminal connection lost');
+        if (!socket.terminalStream) {
+            console.warn('⚠️ No terminal stream for socket:', socket.id);
+            socket.emit('docker:terminal-error', 'No terminal connection found. Please reconnect.');
+            return;
+        }
+
+        if (socket.terminalStream.destroyed) {
+            console.warn('⚠️ Terminal stream destroyed for socket:', socket.id);
+            socket.emit('docker:terminal-error', 'Terminal connection destroyed. Please reconnect.');
+            return;
+        }
+
+        if (!socket.terminalStream.writable) {
+            console.warn('⚠️ Terminal stream not writable for socket:', socket.id);
+            socket.emit('docker:terminal-error', 'Terminal not writable. Please reconnect.');
+            return;
+        }
+
+        try {
+            const written = socket.terminalStream.write(data);
+            console.log(`✅ Data written to terminal: ${written}, data: "${data}"`);
+            
+            if (!written) {
+                console.warn('⚠️ Terminal stream buffer full, waiting for drain');
+                socket.terminalStream.once('drain', () => {
+                    console.log('✅ Terminal stream drained');
+                });
+            }
+        } catch (error) {
+            console.error('❌ Error writing to terminal:', error);
+            socket.emit('docker:terminal-error', `Failed to write to terminal: ${error.message}`);
         }
     });
 
-    socket.on('docker:terminal-resize', ({ roomId, containerId, rows, cols }) => {
+    socket.on('docker:terminal-resize', ({ rows, cols }) => {
+        console.log(`📐 Terminal resize: ${cols}x${rows} for ${socket.id}`);
         if (socket.terminalExec) {
             try {
                 socket.terminalExec.resize({ h: rows, w: cols });
+                console.log(`✅ Terminal resized to ${cols}x${rows}`);
             } catch (error) {
-                console.error('Terminal resize error:', error);
+                console.error('❌ Terminal resize error:', error);
+                socket.emit('docker:terminal-error', `Resize failed: ${error.message}`);
             }
         }
     });
 
-    // File System Operations
-    socket.on('docker:get-file-tree', async ({ roomId, containerId, path }) => {
-        try {
-            const files = await dockerService.getFileTree(roomId, path);
-            socket.emit('docker:file-tree', { files });
-        } catch (error) {
-            console.error('Error getting file tree:', error);
-            socket.emit('docker:file-error', error.message);
+    // Add a test endpoint for terminal functionality
+    socket.on('docker:test-terminal', ({ roomId }) => {
+        console.log(`🧪 Testing terminal for room ${roomId}, socket ${socket.id}`);
+        
+        if (socket.terminalStream && socket.terminalStream.writable) {
+            try {
+                socket.terminalStream.write('echo "Terminal test successful"\r');
+                socket.emit('docker:test-result', { success: true, message: 'Test command sent' });
+            } catch (error) {
+                socket.emit('docker:test-result', { success: false, message: error.message });
+            }
+        } else {
+            socket.emit('docker:test-result', { 
+                success: false, 
+                message: `Terminal not available. Stream exists: ${!!socket.terminalStream}, Writable: ${socket.terminalStream?.writable}` 
+            });
         }
     });
 
-    socket.on('docker:create-file', async ({ roomId, containerId, path, type }) => {
+    // File System Operations
+    socket.on('docker:get-file-tree', async ({ roomId, containerId, path = '/workspace' }) => {
         try {
-            await dockerService.createFile(roomId, path, type);
-            socket.emit('docker:file-created', { path, type });
+            console.log(`📁 Getting file tree for room ${roomId}, path: ${path}`);
+            const files = await dockerService.getFileTree(roomId, path);
+            socket.emit('docker:file-tree', { files, path });
+        } catch (error) {
+            console.error('Error getting file tree:', error);
+            socket.emit('docker:file-error', { error: error.message, operation: 'get-file-tree' });
+        }
+    });
+
+    socket.on('docker:create-file', async ({ roomId, containerId, path, type = 'file', content = '' }) => {
+        try {
+            console.log(`📝 Creating ${type}: ${path} in room ${roomId}`);
             
-            // Broadcast to all clients in room
+            if (!path || path.trim() === '') {
+                throw new Error('File path is required');
+            }
+            
+            await dockerService.createFile(roomId, path, type, content);
+            socket.emit('docker:file-created', { path, type, success: true });
+            
+            // Refresh file tree for all clients in the room
+            try {
+                const files = await dockerService.getFileTree(roomId, '/workspace');
+                io.to(roomId).emit('docker:file-tree', { files, path: '/workspace' });
+            } catch (treeError) {
+                console.warn('Failed to refresh file tree:', treeError.message);
+            }
+            
+            // Broadcast to other clients in room
             socket.to(roomId).emit('docker:file-created', { path, type });
+            
         } catch (error) {
             console.error('Error creating file:', error);
-            socket.emit('docker:file-error', error.message);
+            const errorMessage = error.message || `Failed to create ${type}`;
+            socket.emit('docker:file-error', { error: errorMessage, operation: 'create-file', path });
+            socket.emit('docker:file-created', { path, type, success: false, error: errorMessage });
         }
     });
 
     socket.on('docker:delete-file', async ({ roomId, containerId, path }) => {
         try {
-            await dockerService.deleteFile(roomId, path);
-            socket.emit('docker:file-deleted', { path });
+            console.log(`🗑️ Deleting: ${path} in room ${roomId}`);
             
-            // Broadcast to all clients in room
+            if (!path || path.trim() === '') {
+                throw new Error('File path is required');
+            }
+            
+            await dockerService.deleteFile(roomId, path);
+            socket.emit('docker:file-deleted', { path, success: true });
+            
+            // Refresh file tree for all clients in the room
+            try {
+                const files = await dockerService.getFileTree(roomId, '/workspace');
+                io.to(roomId).emit('docker:file-tree', { files, path: '/workspace' });
+            } catch (treeError) {
+                console.warn('Failed to refresh file tree:', treeError.message);
+            }
+            
+            // Broadcast to other clients in room
             socket.to(roomId).emit('docker:file-deleted', { path });
+            
         } catch (error) {
             console.error('Error deleting file:', error);
-            socket.emit('docker:file-error', error.message);
+            const errorMessage = error.message || 'Failed to delete file';
+            socket.emit('docker:file-error', { error: errorMessage, operation: 'delete-file', path });
+            socket.emit('docker:file-deleted', { path, success: false, error: errorMessage });
         }
     });
 
     socket.on('docker:read-file', async ({ roomId, containerId, path }) => {
         try {
+            console.log(`📖 Reading file: ${path} in room ${roomId}`);
+            
+            if (!path || path.trim() === '') {
+                throw new Error('File path is required');
+            }
+            
             const content = await dockerService.readFile(roomId, path);
             socket.emit('docker:file-content', { path, content });
+            
         } catch (error) {
             console.error('Error reading file:', error);
-            socket.emit('docker:file-error', error.message);
+            const errorMessage = error.message || 'Failed to read file';
+            socket.emit('docker:file-error', { error: errorMessage, operation: 'read-file', path });
+            socket.emit('docker:file-content', { path, content: '', error: errorMessage });
         }
     });
 
     socket.on('docker:write-file', async ({ roomId, containerId, path, content }) => {
         try {
-            await dockerService.writeFile(roomId, path, content);
-            socket.emit('docker:file-saved', { path });
+            console.log(`💾 Writing file: ${path} in room ${roomId} (${content?.length || 0} bytes)`);
             
-            // Broadcast file change to other clients
-            socket.to(roomId).emit('docker:file-changed', { path, content });
+            // Validate inputs
+            if (!path || path.trim() === '') {
+                throw new Error('File path is required');
+            }
+            
+            if (content === undefined || content === null) {
+                throw new Error('File content is required');
+            }
+            
+            await dockerService.writeFile(roomId, path, content);
+            socket.emit('docker:file-saved', { path, success: true });
+            
+            // Refresh file tree to show updated file size/date
+            try {
+                const files = await dockerService.getFileTree(roomId, '/workspace');
+                socket.emit('docker:file-tree', { files, path: '/workspace' });
+            } catch (treeError) {
+                console.warn('Failed to refresh file tree:', treeError.message);
+            }
+            
+            // Broadcast file change to other clients (but not the content to avoid loops)
+            socket.to(roomId).emit('docker:file-changed', { path, timestamp: new Date().toISOString() });
+            
         } catch (error) {
             console.error('Error writing file:', error);
-            socket.emit('docker:file-error', error.message);
+            const errorMessage = error.message || 'Failed to save file';
+            socket.emit('docker:file-error', { error: errorMessage, operation: 'write-file', path });
+            socket.emit('docker:file-saved', { path, success: false, error: errorMessage });
         }
     });
 
-    socket.on('docker:upload-file', async ({ roomId, containerId, fileName, content, path }) => {
+    socket.on('docker:upload-file', async ({ roomId, containerId, fileName, content, path = '/workspace' }) => {
         try {
-            const filePath = `${path}/${fileName}`.replace('//', '/');
+            const filePath = `${path}/${fileName}`.replace(/\/+/g, '/'); // Clean up double slashes
+            console.log(`⬆️ Uploading file: ${filePath} in room ${roomId}`);
+            
             await dockerService.writeFile(roomId, filePath, content);
-            socket.emit('docker:file-uploaded', { path: filePath });
+            socket.emit('docker:file-uploaded', { path: filePath, success: true });
             
             // Refresh file tree for all clients
             const files = await dockerService.getFileTree(roomId, '/workspace');
-            io.to(roomId).emit('docker:file-tree', { files });
+            io.to(roomId).emit('docker:file-tree', { files, path: '/workspace' });
         } catch (error) {
             console.error('Error uploading file:', error);
-            socket.emit('docker:file-error', error.message);
+            socket.emit('docker:file-error', { error: error.message, operation: 'upload-file', path: fileName });
+            socket.emit('docker:file-uploaded', { path: fileName, success: false, error: error.message });
         }
     });
 
     socket.on('docker:download-file', async ({ roomId, containerId, path }) => {
         try {
+            console.log(`⬇️ Downloading file: ${path} in room ${roomId}`);
             const content = await dockerService.readFile(roomId, path);
             const fileName = path.split('/').pop();
-            socket.emit('docker:file-download', { fileName, content });
+            socket.emit('docker:file-download', { fileName, content, success: true });
         } catch (error) {
             console.error('Error downloading file:', error);
-            socket.emit('docker:file-error', error.message);
+            socket.emit('docker:file-error', { error: error.message, operation: 'download-file', path });
+            socket.emit('docker:file-download', { success: false, error: error.message });
         }
     });
 
@@ -448,11 +570,23 @@ io.on('connection', (socket) => {
         const rooms = [...socket.rooms];
         
         // Cleanup terminal connections
-        if (socket.terminalStream) {
+        if (socket.terminalStream && !socket.terminalStream.destroyed) {
             try {
                 socket.terminalStream.end();
             } catch (e) {
                 console.log('Terminal cleanup error:', e.message);
+            }
+        }
+        
+        // Remove terminal from container info
+        if (socket.roomId && socket.terminalId) {
+            try {
+                const containerInfo = dockerService.containers.get(socket.roomId);
+                if (containerInfo && containerInfo.terminals.has(socket.terminalId)) {
+                    containerInfo.terminals.delete(socket.terminalId);
+                }
+            } catch (e) {
+                console.log('Terminal map cleanup error:', e.message);
             }
         }
         

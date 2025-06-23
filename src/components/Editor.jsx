@@ -64,37 +64,55 @@ const Editor = ({ socketRef, roomId, onCodeChange, code, language = 'javascript'
     };
 
     const getLanguageFromFile = (filePath) => {
-        if (!filePath) return 'javascript';
-        
-        const extension = filePath.split('.').pop()?.toLowerCase();
-        const languageMap = {
-            'js': 'javascript',
-            'jsx': 'javascript',
-            'ts': 'typescript',
-            'tsx': 'typescript',
-            'py': 'python',
-            'java': 'java',
-            'cpp': 'cpp',
-            'c': 'c',
-            'cs': 'csharp',
-            'php': 'php',
-            'rb': 'ruby',
-            'go': 'go',
-            'rs': 'rust',
-            'html': 'html',
-            'css': 'css',
-            'scss': 'scss',
-            'json': 'json',
-            'xml': 'xml',
-            'md': 'markdown',
-            'sh': 'shell',
-            'sql': 'sql',
-            'dockerfile': 'dockerfile',
-            'yaml': 'yaml',
-            'yml': 'yaml',
-        };
-        
-        return languageMap[extension] || 'plaintext';
+        // Validate that filePath is a string
+        if (!filePath || typeof filePath !== 'string') {
+            console.warn('Invalid filePath provided to getLanguageFromFile:', filePath);
+            return 'javascript'; // default language
+        }
+
+        try {
+            const extension = filePath.split('.').pop()?.toLowerCase();
+            
+            const languageMap = {
+                'js': 'javascript',
+                'jsx': 'javascript',
+                'ts': 'typescript',
+                'tsx': 'typescript',
+                'py': 'python',
+                'cpp': 'cpp',
+                'c': 'cpp',
+                'cc': 'cpp',
+                'cxx': 'cpp',
+                'h': 'cpp',
+                'hpp': 'cpp',
+                'java': 'java',
+                'html': 'html',
+                'htm': 'html',
+                'css': 'css',
+                'scss': 'scss',
+                'sass': 'sass',
+                'json': 'json',
+                'xml': 'xml',
+                'md': 'markdown',
+                'markdown': 'markdown',
+                'sql': 'sql',
+                'php': 'php',
+                'rb': 'ruby',
+                'go': 'go',
+                'rs': 'rust',
+                'sh': 'shell',
+                'bash': 'shell',
+                'yml': 'yaml',
+                'yaml': 'yaml',
+                'txt': 'plaintext',
+                'log': 'plaintext'
+            };
+
+            return languageMap[extension] || 'plaintext';
+        } catch (error) {
+            console.error('Error determining language from file path:', error);
+            return 'javascript'; // fallback to javascript
+        }
     };
 
     const currentLanguage = selectedFile ? getLanguageFromFile(selectedFile) : language;
