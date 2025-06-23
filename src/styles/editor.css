@@ -76,3 +76,294 @@
     display: none;
   }
 }
+
+.editor-page {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #1e1e1e;
+    color: #d4d4d4;
+}
+
+.editor-header {
+    height: 60px;
+    background: #2d2d30;
+    border-bottom: 1px solid #3e3e42;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.room-title {
+    font-size: 18px;
+    margin: 0;
+    color: #ffffff;
+}
+
+.copy-btn {
+    background: #007acc;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.copy-btn:hover {
+    background: #005a9e;
+}
+
+.header-center {
+    display: flex;
+    align-items: center;
+}
+
+.editor-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.control-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #0e639c;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.control-btn:hover {
+    background: #1177bb;
+}
+
+.control-btn:disabled {
+    background: #6c6c6c;
+    cursor: not-allowed;
+}
+
+.save-btn {
+    background: #16a085;
+}
+
+.save-btn:hover {
+    background: #138d75;
+}
+
+.run-btn {
+    background: #28a745;
+}
+
+.run-btn:hover {
+    background: #218838;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.view-toggles {
+    display: flex;
+    gap: 5px;
+}
+
+.toggle-btn {
+    background: transparent;
+    color: #cccccc;
+    border: 1px solid #3e3e42;
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.toggle-btn:hover {
+    background: #3e3e42;
+}
+
+.toggle-btn.active {
+    background: #007acc;
+    color: white;
+    border-color: #007acc;
+}
+
+.leave-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.leave-btn:hover {
+    background: #c82333;
+}
+
+.editor-content {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+.editor-sidebar {
+    width: 300px;
+    background: #252526;
+    border-right: 1px solid #3e3e42;
+    overflow-y: auto;
+}
+
+.clients-section {
+    padding: 15px;
+    border-bottom: 1px solid #3e3e42;
+}
+
+.clients-section h3 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.clients-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.client {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    background: #2d2d30;
+    border-radius: 4px;
+}
+
+.client-avatar {
+    width: 24px;
+    height: 24px;
+    background: #007acc;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.client-username {
+    font-size: 12px;
+}
+
+.editor-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-wrapper {
+    flex: 1;
+    background: #1e1e1e;
+}
+
+.editor-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-subheader {
+    height: 35px;
+    background: #2d2d30;
+    border-bottom: 1px solid #3e3e42;
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.file-name {
+    font-size: 13px;
+    color: #cccccc;
+}
+
+.language-badge {
+    background: #007acc;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+}
+
+.monaco-editor-wrapper {
+    flex: 1;
+}
+
+.terminal-wrapper {
+    height: 300px;
+    border-top: 1px solid #3e3e42;
+}
+
+.chat-panel {
+    width: 300px;
+    background: #252526;
+    border-left: 1px solid #3e3e42;
+}
+
+/* File Explorer Styles */
+.file-explorer {
+    padding: 15px;
+}
+
+.file-explorer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.file-explorer-header h3 {
+    margin: 0;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.file-explorer-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.action-btn {
+    background: transparent;
+    border: 1px solid #3e3e42;
+    color: #cccccc;
+    padding: 4px;
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.action-btn:hover {
+    background: #3e3e42;
+}

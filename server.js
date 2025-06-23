@@ -233,7 +233,7 @@ io.on('connection', (socket) => {
         userSocketMap[socket.id] = username;
         socket.join(roomId);
         
-        // Initialize Docker container for the room
+        // Initialize Docker container for the room with error handling
         try {
             const containerInfo = await dockerService.getContainer(roomId);
             socket.emit('docker:container-ready', { 
@@ -242,7 +242,17 @@ io.on('connection', (socket) => {
             });
         } catch (error) {
             console.error('Error initializing container:', error);
-            socket.emit('docker:container-error', { error: error.message });
+            
+            // Special handling for Docker socket permission errors
+            if (error.code === 'EACCES' && 
+                error.syscall === 'connect' && 
+                error.address === '/var/run/docker.sock') {
+                socket.emit('docker:container-error', { 
+                    error: 'Permission denied connecting to Docker socket. Please add your user to the docker group: sudo usermod -aG docker $USER' 
+                });
+            } else {
+                socket.emit('docker:container-error', { error: error.message });
+            }
         }
         
         const clients = getAllConnectedClients(roomId);
@@ -262,16 +272,20 @@ io.on('connection', (socket) => {
             const terminalId = `${socket.id}-${Date.now()}`;
             const { exec, stream } = await dockerService.createTerminal(roomId, terminalId);
             
-            // Pipe terminal output to socket
+            // Handle terminal output
             stream.on('data', (chunk) => {
-                socket.emit('docker:terminal-data', chunk.toString());
+                const data = chunk.toString();
+                console.log('📤 Terminal output:', data.replace(/\n/g, '\\n'));
+                socket.emit('docker:terminal-data', data);
             });
 
             stream.on('end', () => {
+                console.log('🔚 Terminal stream ended');
                 socket.emit('docker:terminal-disconnected');
             });
 
             stream.on('error', (error) => {
+                console.error('❌ Terminal stream error:', error);
                 socket.emit('docker:terminal-error', error.message);
             });
 
@@ -281,6 +295,12 @@ io.on('connection', (socket) => {
             
             socket.emit('docker:terminal-connected', { terminalId });
             
+            // Send welcome message
+            setTimeout(() => {
+                socket.emit('docker:terminal-data', '\r\nWelcome to CodeSync Terminal!\r\n');
+                socket.emit('docker:terminal-data', 'Type commands and press Enter\r\n\r\n');
+            }, 500);
+            
         } catch (error) {
             console.error('Terminal connection error:', error);
             socket.emit('docker:terminal-error', error.message);
@@ -288,8 +308,23 @@ io.on('connection', (socket) => {
     });
 
     socket.on('docker:terminal-input', ({ roomId, containerId, data }) => {
-        if (socket.terminalStream) {
+        console.log('📥 Terminal input received:', data.replace(/\r/g, '\\r').replace(/\n/g, '\\n'));
+        
+        if (socket.terminalStream && socket.terminalStream.writable) {
             socket.terminalStream.write(data);
+        } else {
+            console.warn('⚠️ Terminal stream not writable');
+            socket.emit('docker:terminal-error', 'Terminal connection lost');
+        }
+    });
+
+    socket.on('docker:terminal-resize', ({ roomId, containerId, rows, cols }) => {
+        if (socket.terminalExec) {
+            try {
+                socket.terminalExec.resize({ h: rows, w: cols });
+            } catch (error) {
+                console.error('Terminal resize error:', error);
+            }
         }
     });
 
